@@ -1,32 +1,21 @@
-"""
-Data cleaning and validation module for student performance records.
-"""
 import csv
 from typing import List, Dict, Any, Optional
 
 
 def load_raw_data(filepath: str) -> List[Dict[str, str]]:
-    """Loads a CSV file and returns rows as dictionaries."""
     with open(filepath, mode="r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        return list(reader)
+        return list(csv.DictReader(f))
 
 
 def parse_score(val: Any) -> Optional[int]:
-    """Safely converts a score string to an integer between 0 and 100.
-    Returns None if missing, non-numeric, or outside valid range.
-    """
     try:
         score = int(float(str(val).strip()))
-        if 0 <= score <= 100:
-            return score
-        return None
+        return score if 0 <= score <= 100 else None
     except (ValueError, TypeError):
         return None
 
 
 def clean_row(row: Dict[str, str]) -> Optional[Dict[str, Any]]:
-    """Cleans, normalizes, and validates a single student record."""
     normalized_row = {k.strip().lower(): v.strip() for k, v in row.items()}
 
     math = parse_score(normalized_row.get("math score"))
@@ -49,13 +38,9 @@ def clean_row(row: Dict[str, str]) -> Optional[Dict[str, Any]]:
 
 
 def clean_dataset(records: List[Dict[str, str]]) -> List[Dict[str, Any]]:
-    """Applies cleaning to all records and returns a list of valid records."""
     cleaned = []
-    dropped_count = 0
     for row in records:
         cleaned_row = clean_row(row)
         if cleaned_row is not None:
             cleaned.append(cleaned_row)
-        else:
-            dropped_count += 1
     return cleaned
