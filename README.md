@@ -1,39 +1,49 @@
-# Student Exam Performance: Python Data-Processing App
+# AWS SBG Tasks & Projects Portfolio
 
-A small Python data-processing application and interactive notebook that ingests raw student exam performance records, cleans and validates the data using modular Python functions, and processes statistical metrics and insights using NumPy vectorized operations.
+A structured repository tracking weekly tasks, cloud exercises, and data-processing projects completed as part of the AWS SBG program.
 
 ---
 
-## Project Structure
+## Repository Structure
 
 ```text
-week1-demo/
+aws-sbg-tasks/
+├── README.md                   # Portfolio overview & roadmap
+├── requirements.txt            # Shared project dependencies
+├── .gitignore                  # Git ignore rules for environments and cache
 │
-├── .gitignore                   # Ignores .venv, cache, and notebook checkpoints
-├── requirements.txt             # Project dependencies (numpy, ipykernel)
-├── main.py                      # Standalone CLI entry point to run the pipeline
-├── README.md                    # Project documentation & run guide
+├── week-01/                    # Week 01: Small Python Data-Processing App
+│   ├── README.md               # Detailed task documentation & findings
+│   ├── data_processing_app.py  # Standalone CLI data processing script
+│   ├── data_processing_app.ipynb # Interactive Jupyter & Google Colab notebook
+│   └── data/
+│       └── StudentsPerformance.csv # Raw dataset (1,000 exam records)
 │
-├── data/
-│   └── StudentsPerformance.csv  # Raw Kaggle dataset (1,000 exam records)
-│
-└── src/
-    ├── __init__.py
-    ├── cleaner.py               # Modular loading, validation, and cleaning functions
-    ├── processor.py             # NumPy operations, stats, boolean masks, and Z-scores
-    └── notebook.ipynb           # Complete Jupyter & Google Colab interactive notebook
+└── week-02/                    # Week 02: Upcoming Task
 ```
 
 ---
 
-## Setup & Installation
+## Weekly Roadmap
 
-### 1. Create and Activate Virtual Environment
+| Week | Focus Area / Task | Core Technologies | Deliverables | Status |
+| :---: | :--- | :--- | :--- | :---: |
+| **01** | **Small Python Data-Processing App** | Python, NumPy, Jupyter, Colab | [Script](week-01/data_processing_app.py) • [Notebook](week-01/data_processing_app.ipynb) • [Docs](week-01/README.md) | ✅ Completed |
+| **02** | Upcoming Task | TBD | Pending | ⏳ Upcoming |
+
+---
+
+## Environment Setup
+
+### 1. Clone & Activate Virtual Environment
 ```powershell
+git clone https://github.com/AbellTT/week1-demo.git
+cd week1-demo
+
 # Create virtual environment
 python -m venv .venv
 
-# Activate in PowerShell (Windows)
+# Activate on Windows PowerShell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 .venv\Scripts\Activate
 ```
@@ -45,40 +55,13 @@ pip install -r requirements.txt
 
 ---
 
-## How to Run
+## Running Tasks
 
-### Option 1: Run via Command Line Interface (CLI)
-To run the end-to-end data processing pipeline directly from your terminal:
-
+### Week 01: Data-Processing App
 ```powershell
-python main.py
+# Run standalone script
+python week-01/data_processing_app.py
+
+# Or launch notebook
+jupyter lab
 ```
-
-Or specify a custom dataset path:
-```powershell
-python main.py --data data/StudentsPerformance.csv
-```
-
-### Option 2: Run in Jupyter Notebook
-Open `src/notebook.ipynb` inside your editor (VS Code / Antigravity IDE) and select the **Python (.venv)** kernel at the top right, then click **Run All**.
-
-### Option 3: Run in Google Colab
-1. Upload `src/notebook.ipynb` to [Google Colab](https://colab.research.google.com/).
-2. Run all cells. The notebook automatically fetches the dataset directly from GitHub if not found locally!
-
----
-
-## Key Pipeline Features
-
-1. **Modular Data Cleaner (`src/cleaner.py`)**:
-   - `load_raw_data`: Reads CSV records into dictionaries using Python's `csv.DictReader`.
-   - `parse_score`: Safely casts score strings to integers while validating the valid range ($0 \le score \le 100$).
-   - `clean_row`: Standardizes column keys, strips whitespace, converts test prep status to booleans, and filters corrupt records.
-   - `clean_dataset`: Pipeline orchestrator that processes all records and drops malformed rows.
-
-2. **NumPy Processing Engine (`src/processor.py`)**:
-   - **Vectorized Aggregations:** Computes total scores and composite averages along `axis=1`.
-   - **Descriptive Statistics:** Calculates `mean`, `median`, `std`, `min`, `max`, and `IQR` across Math, Reading, and Writing.
-   - **Boolean Masking:** Filters students who passed all subjects ($\ge 60$) and identifies top 10% performers ($90^{\text{th}}$ percentile).
-   - **Comparative Analysis:** Compares average exam performance of students who completed a prep course versus those who did not.
-   - **Z-Score Normalization:** Computes standardized scores $Z = \frac{X - \mu}{\sigma}$.
