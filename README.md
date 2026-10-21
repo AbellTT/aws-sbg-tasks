@@ -37,8 +37,8 @@ aws-sbg-tasks/
 
 ### 1. Clone & Activate Virtual Environment
 ```powershell
-git clone https://github.com/AbellTT/week1-demo.git
-cd week1-demo
+git clone https://github.com/AbellTT/aws-sbg-tasks.git
+cd aws-sbg-tasks
 
 # Create virtual environment
 python -m venv .venv
