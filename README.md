@@ -19,7 +19,14 @@ aws-sbg-tasks/
 │   └── data/
 │       └── StudentsPerformance.csv # Raw dataset (1,000 exam records)
 │
-└── week-02/                    # Week 02: Upcoming Task
+└── week-02/                    # Week 02: Mini Semantic Search Engine
+    ├── README.md               # Detailed documentation & query examples
+    ├── requirements.txt        # Week 02 dependencies (chromadb, pandas, numpy)
+    ├── task.py                 # Standalone CLI semantic search engine
+    ├── task.ipynb              # Interactive Jupyter & Google Colab notebook
+    └── data/
+        ├── faqs.json           # AASTU Knowledge Base (JSON)
+        └── faqs.csv            # AASTU Knowledge Base (CSV)
 ```
 
 ---
@@ -29,7 +36,7 @@ aws-sbg-tasks/
 | Week | Focus Area / Task | Core Technologies | Deliverables | Status |
 | :---: | :--- | :--- | :--- | :---: |
 | **01** | **Small Python Data-Processing App** | Python, NumPy, Jupyter, Colab | [Script](week-01/data_processing_app.py) • [Notebook](week-01/data_processing_app.ipynb) • [Docs](week-01/README.md) | ✅ Completed |
-| **02** | Upcoming Task | TBD | Pending | ⏳ Upcoming |
+| **02** | **Mini Semantic Search Engine** | Pandas, ChromaDB, Cosine Similarity, Embeddings | [Script](week-02/task.py) • [Notebook](week-02/task.ipynb) • [Docs](week-02/README.md) | ✅ Completed |
 
 ---
 
@@ -51,6 +58,7 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 ### 2. Install Dependencies
 ```powershell
 pip install -r requirements.txt
+pip install -r week-02/requirements.txt
 ```
 
 ---
@@ -65,3 +73,16 @@ python week-01/data_processing_app.py
 # Or launch notebook
 jupyter lab
 ```
+
+### Week 02: Mini Semantic Search Engine
+```powershell
+# Run semantic search script with demo queries
+python week-02/task.py
+
+# Query with custom text
+python week-02/task.py --query "How do I connect to campus wifi?"
+
+# Launch notebook
+jupyter notebook week-02/task.ipynb
+```
+
