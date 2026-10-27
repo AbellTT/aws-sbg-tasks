@@ -17,14 +17,14 @@ This project implements a **Mini Semantic Search Engine** over an Addis Ababa Sc
 
 ```mermaid
 flowchart TD
-    A["Raw FAQ Dataset (JSON/CSV)"] --> B["1. Pandas Ingestion & Inspection"]
-    B --> C["2. Cleaning Pipeline (Deduplicate, Trim, Impute)"]
-    C --> D["3. Text Chunking (Sliding Window + Overlap)"]
-    D --> E["4. Vector Embedding & Indexing (ChromaDB / NumPy)"]
+    A[Raw FAQ Dataset: JSON or CSV] --> B[1. Pandas Ingestion and Inspection]
+    B --> C[2. Cleaning: Deduplicate, Trim, Impute]
+    C --> D[3. Text Chunking: Sliding Window with Overlap]
+    D --> E[4. Vector Embedding and Indexing: ChromaDB or NumPy]
     
-    Q["Student Search Query"] --> E
-    E --> F["5. Cosine Similarity & Nearest Neighbors (k-NN)"]
-    F --> G["6. Top-3 Ranked Relevant Answers + Metadata"]
+    Q[Student Search Query] --> E
+    E --> F[5. Cosine Similarity and k-NN Search]
+    F --> G[6. Top-3 Ranked Relevant Answers and Metadata]
 ```
 
 ### The Two-Lane Pipeline
