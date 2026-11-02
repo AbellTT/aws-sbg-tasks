@@ -62,19 +62,27 @@ def load_dataset() -> pd.DataFrame:
         return pd.read_csv(DATASET_URL, sep="\t", header=None, names=["label", "message"])
 
 
-def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
+def clean_dataset(df: pd.DataFrame, drop_duplicates: bool = True) -> pd.DataFrame:
     """
     Data hygiene and cleaning best practices:
     - Strips whitespace from labels and messages
     - Drops any null or empty rows
     - Validates target labels ('ham', 'spam')
+    - Removes duplicate messages to prevent data leakage between train and test sets
     """
     cleaned = df.dropna(subset=["label", "message"]).copy()
     cleaned["message"] = cleaned["message"].astype(str).str.strip()
     cleaned["label"] = cleaned["label"].astype(str).str.strip().str.lower()
     cleaned = cleaned[cleaned["message"].str.len() > 0]
-    cleaned = cleaned[cleaned["label"].isin(["ham", "spam"])].reset_index(drop=True)
-    return cleaned
+    cleaned = cleaned[cleaned["label"].isin(["ham", "spam"])]
+
+    if drop_duplicates:
+        initial_count = len(cleaned)
+        cleaned = cleaned.drop_duplicates(subset=["message"]).reset_index(drop=True)
+        dropped_dupes = initial_count - len(cleaned)
+        print(f"[*] Removed {dropped_dupes} duplicate messages (Data leakage prevention).")
+
+    return cleaned.reset_index(drop=True)
 
 
 def train_spam_filter(df: pd.DataFrame):

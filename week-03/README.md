@@ -9,7 +9,7 @@
 
 In this assignment, I built the classical 10-line machine learning spam detector (**TF-IDF Vectorizer + Multinomial Naive Bayes**) on the real-world **SMS Spam Collection dataset**.
 
-After training and measuring its baseline performance (achieving **96.05% test accuracy** and **100% precision** on standard test messages), I crafted **5 adversarial messages** specifically engineered to fool the filter and expose the blind spots of traditional bag-of-words counting.
+After training and measuring its baseline performance (achieving **95.06% test accuracy** and **100% precision** on standard test messages), I crafted **5 adversarial messages** specifically engineered to fool the filter and expose the blind spots of traditional bag-of-words counting.
 
 ---
 
@@ -17,11 +17,11 @@ After training and measuring its baseline performance (achieving **96.05% test a
 
 ```mermaid
 flowchart TD
-    A[SMS Spam Collection Dataset: 5572 Messages] --> B[1. Data Cleaning and Validation: Whitespace, Nulls, Labels]
+    A[SMS Spam Collection Dataset: 5572 Messages] --> B[1. Data Cleaning: Nulls, Whitespace, Deduplication: 414 removed]
     B --> C[2. Stratified Train-Test Split: 80% Train, 20% Test]
     C --> D[3. TF-IDF Vectorization: Text to Numerical Features]
     D --> E[4. Multinomial Naive Bayes: Fit on Training Set]
-    E --> F[5. Baseline Diagnostics: 96% Acc, 100% Precision]
+    E --> F[5. Baseline Diagnostics: 95% Acc, 100% Precision]
     
     Q[5 Adversarial Test Messages] --> D
     D --> G[6. Adversarial Attack Evaluation]
@@ -36,27 +36,28 @@ To ensure production-grade data hygiene, I implemented the following best practi
 1. **Handling Missing Values**: Checked for and dropped any empty or null rows using `df.dropna(subset=['label', 'message'])`.
 2. **Whitespace Normalization**: Trimmed leading and trailing whitespace from both text messages and labels to prevent accidental token mismatches.
 3. **Label Sanitation**: Lowercased and verified labels strictly belong to `{'ham', 'spam'}`.
-4. **Stratified Splitting**: Because the dataset is naturally imbalanced (86.6% ham vs 13.4% spam), I used `stratify=df['label']` in `train_test_split`. This guarantees both training and test sets maintain the exact same real-world class distribution.
-5. **No Data Leakage**: Fitted the TF-IDF vectorizer exclusively on `X_train` (`vec.fit_transform`), and only transformed `X_test` (`vec.transform`).
+4. **Deduplication**: Dropped 414 duplicate messages (identical text, same label — template spam) using `drop_duplicates(subset=['message'])`. This is a critical step: without it, the same message can land in both train and test sets, inflating recall metrics through data leakage.
+5. **Stratified Splitting**: Because the dataset is naturally imbalanced (87.5% ham vs 12.5% spam after dedup), I used `stratify=df['label']` in `train_test_split`. This guarantees both training and test sets maintain the exact same real-world class distribution.
+6. **No Data Leakage**: Fitted the TF-IDF vectorizer exclusively on `X_train` (`vec.fit_transform`), and only transformed `X_test` (`vec.transform`).
 
 ---
 
 ## 📊 Baseline Model Performance
 
-Evaluated on 1,115 unseen test messages:
+Evaluated on 1,032 unseen test messages (after removing 414 duplicates from the original 5,572):
 
 | Metric | Score | Key Takeaway |
 |:---|:---:|:---|
-| **Training Accuracy** | **97.58%** | Evaluated on the training data. |
-| **Test Accuracy** | **96.05%** | Baseline accuracy from Slide 6. |
+| **Training Accuracy** | **96.90%** | Evaluated on the training data. |
+| **Test Accuracy** | **95.06%** | Baseline accuracy from Slide 6. |
 | **Precision (Spam)** | **100.00%** | When the model flagged spam, it was **100% right** (Zero false alarms on normal test mail). |
-| **Recall (Spam)** | **70.47%** | Of all real spam messages, **29.53% slipped through** (44 false negatives). |
+| **Recall (Spam)** | **60.16%** | Of all real spam messages, **39.84% slipped through** (51 false negatives). |
 
 ### Confusion Matrix on Test Set
 ```text
                      Predicted SPAM     Predicted HAM
-Actual SPAM (149)         105                44       (False Negatives: 44 spam missed)
-Actual HAM  (966)           0               966       (False Positives: 0 good mail lost)
+Actual SPAM (128)         77                51       (False Negatives: 51 spam missed)
+Actual HAM  (904)          0               904       (False Positives: 0 good mail lost)
 ```
 
 ---
@@ -67,11 +68,11 @@ Here are the **5 adversarial messages** I formulated to break the model, showing
 
 | # | My message | Model said | Should be | Status | Trick Used | Why it failed |
 |:---:|:---|:---:|:---:|:---:|:---|:---|
-| **1** | `"Cl@im your fr33 g1ft card now"` | **ham** (7.0%) | `spam` | **FOOLED! 🚨** | **Spelling Trick / Leetspeak** | Obfuscated tokens (`cl@im`, `fr33`, `g1ft`) never appeared in the training vocabulary. Because TF-IDF hashes exact string tokens, unseen words get zero weight, letting the spam slip right through. |
-| **2** | `"Dear sir, I am writing to propose a mutually beneficial financial partnership regarding surplus funds"` | **ham** (3.7%) | `spam` | **FOOLED! 🚨** | **Polite / Businesslike Tone** | Formality evasion. Most spam in the training set is loud and informal (`WINNER!`, `FREE!`). Using formal diplomatic phrasing completely bypasses standard spam keyword triggers. |
-| **3** | `"Security warning: do not click www links or claim prizes from unknown numbers"` | **spam** (56.3%) | `ham` | **FOOLED! 🚨** | **Negation & Warning Context** | Bag-of-words ignores word order and grammar. The message warns *against* clicking links, but the model counts `"www"`, `"claim"`, and `"prizes"`, ignoring `"warning"` and `"do not"`. |
-| **4** | `"Reminder: claim your awarded certificate from office 500 tomorrow"` | **spam** (60.8%) | `ham` | **FOOLED! 🚨** | **Administrative Context** | Keyword collision. Legitimate academic words (`claim`, `awarded`, `500`) carry high spam weights in the training distribution, falsely triggering a spam alarm on ordinary student mail. |
-| **5** | `"Please claim the prize money awarded for our science club project"` | **spam** (68.7%) | `ham` | **FOOLED! 🚨** | **Student Award Context** | Lack of semantic intent understanding. A student discussing a science competition win uses `prize`, `awarded`, and `claim`, which push the Naive Bayes odds into spam territory. |
+| **1** | `"Cl@im your fr33 g1ft card now"` | **ham** (6.0%) | `spam` | **FOOLED! 🚨** | **Spelling Trick / Leetspeak** | Obfuscated tokens (`cl@im`, `fr33`, `g1ft`) never appeared in the training vocabulary. Because TF-IDF hashes exact string tokens, unseen words get zero weight, letting the spam slip right through. |
+| **2** | `"Dear sir, I am writing to propose a mutually beneficial financial partnership regarding surplus funds"` | **ham** (4.3%) | `spam` | **FOOLED! 🚨** | **Polite / Businesslike Tone** | Formality evasion. Most spam in the training set is loud and informal (`WINNER!`, `FREE!`). Using formal diplomatic phrasing completely bypasses standard spam keyword triggers. |
+| **3** | `"Security warning: do not click www links or claim prizes from unknown numbers"` | **ham** (49.7%) | `ham` | **Caught ✅** | **Negation & Warning Context** | Bag-of-words ignores grammar, but the model happened to catch this one — `"warning"` and `"unknown"` nudge it to ham. Still got 4/5 fooled overall. |
+| **4** | `"Reminder: claim your awarded certificate from office 500 tomorrow"` | **spam** (57.2%) | `ham` | **FOOLED! 🚨** | **Administrative Context** | Keyword collision. Legitimate academic words (`claim`, `awarded`, `500`) carry high spam weights in the training distribution, falsely triggering a spam alarm on ordinary student mail. |
+| **5** | `"Please claim the prize money awarded for our science club project"` | **spam** (64.9%) | `ham` | **FOOLED! 🚨** | **Student Award Context** | Lack of semantic intent understanding. A student discussing a science competition win uses `prize`, `awarded`, and `claim`, which push the Naive Bayes odds into spam territory. |
 
 ---
 
