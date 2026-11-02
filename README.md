@@ -32,8 +32,7 @@ aws-sbg-tasks/
     ├── README.md               # Detailed documentation & adversarial results
     ├── requirements.txt        # Week 03 dependencies (scikit-learn, pandas, numpy)
     ├── task.py                 # Standalone CLI classifier and adversarial tester
-    ├── spam_filter.ipynb       # Interactive Jupyter & Google Colab notebook
-    └── task.ipynb              # Matching notebook alias
+    └── spam_filter.ipynb       # Interactive Jupyter & Google Colab notebook
 ```
 
 ---

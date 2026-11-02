@@ -116,8 +116,7 @@ week-03/
 ├── README.md               # Deliverable write-up and adversarial results table
 ├── requirements.txt        # Dependencies (scikit-learn, pandas, numpy)
 ├── task.py                 # Standalone interactive CLI script
-├── spam_filter.ipynb       # Interactive Jupyter & Google Colab notebook
-└── task.ipynb              # Matching notebook alias
+└── spam_filter.ipynb       # Interactive Jupyter & Google Colab notebook
 ```
 
 ---
