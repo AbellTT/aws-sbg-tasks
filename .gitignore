@@ -18,3 +18,7 @@ Thumbs.db
 practice/
 chroma_db/
 *.db
+
+# Datasets (Excluded per assignment instructions)
+week-03/data/
+*.tsv
