@@ -27,6 +27,13 @@ aws-sbg-tasks/
     └── data/
         ├── faqs.json           # AASTU Knowledge Base (JSON)
         └── faqs.csv            # AASTU Knowledge Base (CSV)
+│
+└── week-03/                    # Week 03: Spam Detector & Adversarial Lab
+    ├── README.md               # Detailed documentation & adversarial results
+    ├── requirements.txt        # Week 03 dependencies (scikit-learn, pandas, numpy)
+    ├── task.py                 # Standalone CLI classifier and adversarial tester
+    ├── spam_filter.ipynb       # Interactive Jupyter & Google Colab notebook
+    └── task.ipynb              # Matching notebook alias
 ```
 
 ---
@@ -37,6 +44,7 @@ aws-sbg-tasks/
 | :---: | :--- | :--- | :--- | :---: |
 | **01** | **Small Python Data-Processing App** | Python, NumPy, Jupyter, Colab | [Script](week-01/data_processing_app.py) • [Notebook](week-01/data_processing_app.ipynb) • [Docs](week-01/README.md) | ✅ Completed |
 | **02** | **Mini Semantic Search Engine** | Pandas, ChromaDB, Cosine Similarity, Embeddings | [Script](week-02/task.py) • [Notebook](week-02/task.ipynb) • [Docs](week-02/README.md) | ✅ Completed |
+| **03** | **Spam Email Detector & Adversarial Lab** | Scikit-Learn, Naive Bayes, TF-IDF, NLP | [Script](week-03/task.py) • [Notebook](week-03/spam_filter.ipynb) • [Docs](week-03/README.md) | ✅ Completed |
 
 ---
 
@@ -59,6 +67,7 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 ```powershell
 pip install -r requirements.txt
 pip install -r week-02/requirements.txt
+pip install -r week-03/requirements.txt
 ```
 
 ---
@@ -84,5 +93,17 @@ python week-02/task.py --query "How do I connect to campus wifi?"
 
 # Launch notebook
 jupyter notebook week-02/task.ipynb
+```
+
+### Week 03: Spam Email Detector & Adversarial Lab
+```powershell
+# Run baseline evaluation and adversarial benchmark
+python week-03/task.py
+
+# Classify a custom message
+python week-03/task.py --message "Cl@im your fr33 g1ft card now"
+
+# Launch notebook
+jupyter notebook week-03/spam_filter.ipynb
 ```
 
