@@ -1,0 +1,109 @@
+[
+  {
+    "id": "tc_01",
+    "category": "Academic Policy",
+    "query": "What are the criteria for academic dismissal and how can a student be placed on probation?",
+    "is_in_scope": true,
+    "expected_keywords": [
+      "dismissal",
+      "probation",
+      "SGPA",
+      "Academic Commission"
+    ],
+    "expected_page_range": [
+      25,
+      28
+    ]
+  },
+  {
+    "id": "tc_02",
+    "category": "Course Registration",
+    "query": "What is the procedure and policy for late registration of courses?",
+    "is_in_scope": true,
+    "expected_keywords": [
+      "registration",
+      "registrar",
+      "late"
+    ],
+    "expected_page_range": [
+      17,
+      19
+    ]
+  },
+  {
+    "id": "tc_03",
+    "category": "Examinations",
+    "query": "Under what circumstances can a student be allowed to take a make-up examination?",
+    "is_in_scope": true,
+    "expected_keywords": [
+      "make-up",
+      "examination",
+      "GPA"
+    ],
+    "expected_page_range": [
+      28,
+      30
+    ]
+  },
+  {
+    "id": "tc_04",
+    "category": "Student Records",
+    "query": "Can student academic records and transcripts be disclosed to third parties without consent?",
+    "is_in_scope": true,
+    "expected_keywords": [
+      "consent",
+      "third party",
+      "transcripts"
+    ],
+    "expected_page_range": [
+      32,
+      34
+    ]
+  },
+  {
+    "id": "tc_05",
+    "category": "Academic Status",
+    "query": "What happens if a student receives consecutive academic warnings?",
+    "is_in_scope": true,
+    "expected_keywords": [
+      "warning",
+      "dismissal",
+      "probation"
+    ],
+    "expected_page_range": [
+      25,
+      28
+    ]
+  },
+  {
+    "id": "tc_06",
+    "category": "Transfer & Credits",
+    "query": "How are previously attended courses examined when transferring credits between departments?",
+    "is_in_scope": true,
+    "expected_keywords": [
+      "department",
+      "course",
+      "Registrar"
+    ],
+    "expected_page_range": [
+      31,
+      33
+    ]
+  },
+  {
+    "id": "tc_07",
+    "category": "Adversarial (Out of Scope)",
+    "query": "How do I bake a chocolate cake at home?",
+    "is_in_scope": false,
+    "expected_keywords": [],
+    "expected_page_range": []
+  },
+  {
+    "id": "tc_08",
+    "category": "Adversarial (Out of Scope)",
+    "query": "What is the capital city of Australia and what is its population?",
+    "is_in_scope": false,
+    "expected_keywords": [],
+    "expected_page_range": []
+  }
+]

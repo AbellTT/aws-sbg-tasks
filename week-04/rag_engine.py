@@ -4,16 +4,21 @@ Week 4: Generative AI & AI Applications
 """
 
 import os
+import sys
 import json
 import re
+import time
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
+import requests
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
-from google import genai
-from google.genai import types
 
-# Import retrieval module from same package
+# Reconfigure stdout for utf-8 on Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+# Import retrieval module
 from retrieval import retrieve_context, format_context_for_prompt, get_or_create_collection
 
 # Directory configuration
@@ -22,7 +27,8 @@ PROMPTS_DIR = BASE_DIR / "prompts"
 PROMPT_TEMPLATE_PATH = PROMPTS_DIR / "qa_system.txt"
 ENV_PATH = BASE_DIR / ".env"
 
-MODEL_NAME = "gemini-3.8-flash"
+DEFAULT_MODEL = "gemini-3.1-flash-lite"
+FALLBACK_MODEL = "gemini-3.8-flash"
 
 
 # ==============================================================================
@@ -53,11 +59,11 @@ class GroundedAnswer(BaseModel):
 
 
 # ==============================================================================
-# 2. CLIENT & PROMPT INITIALIZATION
+# 2. API KEY & PROMPT UTILITIES
 # ==============================================================================
-def get_gemini_client() -> genai.Client:
+def get_api_key() -> str:
     """
-    Loads API key from .env (checks GEMINI_API_KEY and APIKEY) and returns GenAI Client.
+    Loads API key from .env (checks GEMINI_API_KEY and APIKEY).
     """
     if ENV_PATH.exists():
         load_dotenv(ENV_PATH)
@@ -70,7 +76,7 @@ def get_gemini_client() -> genai.Client:
             f"No Gemini API key found! Please ensure 'GEMINI_API_KEY' is set in {ENV_PATH} or your environment."
         )
 
-    return genai.Client(api_key=raw_key.strip())
+    return raw_key.strip()
 
 
 def load_prompt_template(template_path: Path = PROMPT_TEMPLATE_PATH) -> str:
@@ -96,61 +102,99 @@ def clean_llm_json_response(raw_text: str) -> str:
 
 
 # ==============================================================================
-# 3. GENERATION WITH BOUNDED REPAIR LOOP
+# 3. ROBUST REST CALL WITH EXPONENTIAL BACKOFF
+# ==============================================================================
+def call_gemini_raw(prompt: str, api_key: str, model: str = DEFAULT_MODEL, timeout: int = 40) -> str:
+    """
+    Executes a direct, highly resilient HTTP REST call to Gemini with exponential backoff.
+    """
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "temperature": 0.1
+        }
+    }
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            resp = requests.post(url, json=payload, timeout=timeout)
+            
+            # Handle rate-limit (429) or temporary server load (503)
+            if resp.status_code in (429, 503):
+                wait_sec = (attempt + 1) * 3
+                print(f"    [!] Gemini returned HTTP {resp.status_code}. Retrying in {wait_sec}s...")
+                time.sleep(wait_sec)
+                continue
+
+            resp.raise_for_status()
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                raise ValueError("Gemini returned empty candidate response.")
+            return candidates[0]["content"]["parts"][0]["text"]
+
+        except (requests.Timeout, requests.ConnectionError) as net_err:
+            if attempt == max_retries - 1:
+                # Try fallback model on final attempt if primary model timed out
+                if model != FALLBACK_MODEL:
+                    return call_gemini_raw(prompt, api_key, model=FALLBACK_MODEL, timeout=timeout)
+                raise net_err
+            wait_sec = (attempt + 1) * 3
+            time.sleep(wait_sec)
+
+    raise RuntimeError("Failed to obtain response from Gemini API after network retries.")
+
+
+# ==============================================================================
+# 4. GENERATION WITH BOUNDED REPAIR LOOP
 # ==============================================================================
 def generate_grounded_answer(
     prompt: str,
-    client: genai.Client,
-    max_attempts: int = 3
+    api_key: str,
+    model: str = DEFAULT_MODEL,
+    max_repair_attempts: int = 3
 ) -> Tuple[GroundedAnswer, int]:
     """
-    Executes Gemini generation with structured JSON mode and an active repair loop.
+    Executes Gemini generation with structured JSON validation and a bounded repair loop.
     If the output fails JSON decoding or Pydantic validation, it retries with the error details.
     """
     current_prompt = prompt
-    config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-        temperature=0.1  # low temperature for factual grounding
-    )
 
-    for attempt in range(1, max_attempts + 1):
+    for attempt in range(1, max_repair_attempts + 1):
+        raw_text = call_gemini_raw(current_prompt, api_key, model=model)
+        clean_json = clean_llm_json_response(raw_text)
+
         try:
-            response = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=current_prompt,
-                config=config
-            )
-            raw_text = response.text or ""
-            clean_json = clean_llm_json_response(raw_text)
-
-            # Validate against Pydantic contract
             validated_obj = GroundedAnswer.model_validate_json(clean_json)
             return validated_obj, attempt
-
         except (json.JSONDecodeError, ValidationError) as err:
-            print(f"    [!] Validation error on attempt {attempt}/{max_attempts}: {err}")
-            if attempt == max_attempts:
+            print(f"    [!] Schema validation error on attempt {attempt}/{max_repair_attempts}: {err}")
+            if attempt == max_repair_attempts:
                 raise RuntimeError(
-                    f"Failed to produce valid GroundedAnswer after {max_attempts} attempts: {err}"
+                    f"Failed to produce valid GroundedAnswer after {max_repair_attempts} attempts: {err}"
                 ) from err
 
-            # Repair Loop: Give the model specific error feedback to self-correct
-            repair_instructions = (
+            # Repair Loop: Supply specific error feedback to LLM
+            repair_directive = (
                 f"\n\n[SYSTEM REPAIR DIRECTIVE]\n"
-                f"Your previous JSON response failed schema validation with error:\n"
+                f"Your previous JSON response violated schema validation with error:\n"
                 f"{err}\n"
-                f"Please fix the schema violation and output strictly valid JSON conforming to the requested format."
+                f"Please correct the error and output strictly valid JSON conforming to the schema."
             )
-            current_prompt = prompt + repair_instructions
+            current_prompt = prompt + repair_directive
 
 
 # ==============================================================================
-# 4. HIGH-LEVEL RAG INFERENCE PIPELINE
+# 5. HIGH-LEVEL RAG INFERENCE PIPELINE
 # ==============================================================================
 def ask_handbook(
     query: str,
     top_k: int = 3,
-    client: Optional[genai.Client] = None
+    api_key: Optional[str] = None,
+    model: str = DEFAULT_MODEL
 ) -> Dict[str, Any]:
     """
     End-to-End RAG execution:
@@ -158,8 +202,8 @@ def ask_handbook(
       2. Grounded prompt assembly using external prompt file
       3. Real LLM call to Gemini with structured output validation & repair loop
     """
-    if client is None:
-        client = get_gemini_client()
+    if api_key is None:
+        api_key = get_api_key()
 
     # 1. Retrieve
     hits = retrieve_context(query, top_k=top_k)
@@ -170,7 +214,7 @@ def ask_handbook(
     rendered_prompt = template.replace("{context}", context_str).replace("{question}", query)
 
     # 3. Generate & Validate with Repair Loop
-    grounded_answer, attempts = generate_grounded_answer(rendered_prompt, client)
+    grounded_answer, attempts = generate_grounded_answer(rendered_prompt, api_key, model=model)
 
     return {
         "query": query,
@@ -179,7 +223,8 @@ def ask_handbook(
         "confidence": grounded_answer.confidence,
         "can_answer": grounded_answer.can_answer,
         "retrieved_hits": hits,
-        "repair_attempts": attempts
+        "repair_attempts": attempts,
+        "model": model
     }
 
 
@@ -191,12 +236,12 @@ if __name__ == "__main__":
     print("  AASTU STUDENT HANDBOOK: GROUNDED RAG ENGINE DEMO (PHASE 3)")
     print("=" * 75)
 
-    client = get_gemini_client()
+    key = get_api_key()
 
     # Test 1: Grounded in-handbook academic question
     in_scope_query = "What are the rules and criteria for academic probation or dismissal?"
     print(f"\n[Test 1 - Grounded Inquiry]: \"{in_scope_query}\"")
-    result_1 = ask_handbook(in_scope_query, top_k=3, client=client)
+    result_1 = ask_handbook(in_scope_query, top_k=3, api_key=key)
 
     print("-" * 75)
     print(f"Answer:     {result_1['answer']}")
@@ -209,7 +254,7 @@ if __name__ == "__main__":
     out_of_scope_query = "How do I bake a chocolate cake at home?"
     print("\n" + "=" * 75)
     print(f"[Test 2 - Out-of-Scope Refusal]: \"{out_of_scope_query}\"")
-    result_2 = ask_handbook(out_of_scope_query, top_k=2, client=client)
+    result_2 = ask_handbook(out_of_scope_query, top_k=2, api_key=key)
 
     print("-" * 75)
     print(f"Answer:     {result_2['answer']}")
