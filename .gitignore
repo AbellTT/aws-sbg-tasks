@@ -22,6 +22,8 @@ chroma_db/
 
 # Datasets (Excluded per assignment instructions)
 week-03/data/
+week-04/data/*.pdf
+week-04/data/chroma_db/
 *.tsv
 
 # Environment variables & Secrets (Responsible AI)
