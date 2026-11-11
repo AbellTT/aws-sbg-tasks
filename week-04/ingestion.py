@@ -6,7 +6,7 @@ Week 4: Generative AI & AI Applications
 import os
 import re
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from pathlib import Path
 import pypdf
 
@@ -67,79 +67,96 @@ def extract_pages(pdf_path: Path) -> List[Dict[str, Any]]:
     return extracted_pages
 
 
-def chunk_text(
+def chunk_document_continuous(
     pages: List[Dict[str, Any]],
     chunk_size_words: int = 350,
     overlap_words: int = 50
 ) -> List[Dict[str, Any]]:
     """
-    Splits page text into overlapping semantic chunks.
-    Ensures that chunks carry exact page references for accurate RAG citations.
+    Document-based continuous chunker with cross-page overlap.
+    
+    Instead of isolating pages, this combines all text into one continuous
+    stream of words while tagging each word with its originating page number.
+    This guarantees:
+      1. No sentences or rules are abruptly severed at page boundaries.
+      2. True cross-page overlap (the end of Page N blends into Page N+1).
+      3. Precise multi-page citation tracking (e.g., 'Pages 45–46').
     """
-    chunks = []
-    chunk_counter = 0
-
+    # 1. Build a global token stream tagged with originating page numbers
+    tagged_words: List[Tuple[str, int]] = []
     for page_data in pages:
-        page_num = page_data["page"]
-        text = page_data["text"]
-        words = text.split()
+        p_num = page_data["page"]
+        p_words = page_data["text"].split()
+        for w in p_words:
+            tagged_words.append((w, p_num))
 
-        if not words:
-            continue
+    if not tagged_words:
+        return []
 
-        # If page is short, keep as single chunk
-        if len(words) <= chunk_size_words:
-            chunk_id = f"aastu_p{page_num:03d}_c00"
-            chunks.append({
-                "chunk_id": chunk_id,
-                "page": page_num,
-                "source": "AASTU Student Handbook 2023/2024",
-                "text": text,
-                "word_count": len(words),
-                "char_count": len(text)
-            })
-            chunk_counter += 1
-            continue
+    chunks = []
+    start = 0
+    step = chunk_size_words - overlap_words
+    chunk_idx = 0
 
-        # Sliding window chunking with overlap
-        start = 0
-        local_chunk_idx = 0
-        while start < len(words):
-            end = min(start + chunk_size_words, len(words))
-            chunk_words = words[start:end]
-            chunk_text_str = " ".join(chunk_words)
+    # 2. Slide window continuously across document boundaries
+    while start < len(tagged_words):
+        end = min(start + chunk_size_words, len(tagged_words))
+        window = tagged_words[start:end]
 
-            chunk_id = f"aastu_p{page_num:03d}_c{local_chunk_idx:02d}"
-            chunks.append({
-                "chunk_id": chunk_id,
-                "page": page_num,
-                "source": "AASTU Student Handbook 2023/2024",
-                "text": chunk_text_str,
-                "word_count": len(chunk_words),
-                "char_count": len(chunk_text_str)
-            })
+        chunk_words = [w for w, _ in window]
+        chunk_text_str = " ".join(chunk_words)
 
-            local_chunk_idx += 1
-            chunk_counter += 1
+        # Identify all pages spanning this chunk
+        pages_in_chunk = sorted(list(set(p for _, p in window)))
+        page_start = pages_in_chunk[0]
+        page_end = pages_in_chunk[-1]
 
-            if end == len(words):
-                break
-            start += (chunk_size_words - overlap_words)
+        if page_start == page_end:
+            citation_label = f"Page {page_start}"
+        else:
+            citation_label = f"Pages {page_start}–{page_end}"
+
+        chunk_id = f"aastu_c{chunk_idx:04d}_p{page_start:03d}"
+
+        chunks.append({
+            "chunk_id": chunk_id,
+            "page_start": page_start,
+            "page_end": page_end,
+            "pages": pages_in_chunk,
+            "citation_label": citation_label,
+            "source": "AASTU Student Handbook 2023/2024",
+            "text": chunk_text_str,
+            "word_count": len(chunk_words),
+            "char_count": len(chunk_text_str)
+        })
+
+        chunk_idx += 1
+
+        if end == len(tagged_words):
+            break
+
+        start += step
 
     return chunks
 
 
-def run_ingestion(pdf_path: Path = PDF_PATH, output_json: Path = CHUNKS_PATH) -> List[Dict[str, Any]]:
+def run_ingestion(
+    pdf_path: Path = PDF_PATH,
+    output_json: Path = CHUNKS_PATH,
+    chunk_size_words: int = 350,
+    overlap_words: int = 50
+) -> List[Dict[str, Any]]:
     """
-    Executes the full ingestion pipeline: extracts, cleans, chunks, and caches to JSON.
+    Executes the full continuous ingestion pipeline:
+    extracts, cleans, continuously chunks across page boundaries, and caches to JSON.
     """
     print(f"[*] Ingesting PDF: {pdf_path}")
     pages = extract_pages(pdf_path)
     print(f"[*] Extracted {len(pages)} non-empty pages.")
 
-    print(f"[*] Chunking document (size=350 words, overlap=50 words)...")
-    chunks = chunk_text(pages, chunk_size_words=350, overlap_words=50)
-    print(f"[*] Generated {len(chunks)} semantic chunks.")
+    print(f"[*] Applying continuous document chunking (size={chunk_size_words} words, overlap={overlap_words} words)...")
+    chunks = chunk_document_continuous(pages, chunk_size_words=chunk_size_words, overlap_words=overlap_words)
+    print(f"[*] Generated {len(chunks)} continuous semantic chunks.")
 
     output_json.parent.mkdir(parents=True, exist_ok=True)
     with open(output_json, "w", encoding="utf-8") as f:
@@ -161,27 +178,30 @@ def load_or_ingest_chunks(pdf_path: Path = PDF_PATH, cache_path: Path = CHUNKS_P
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("  AASTU STUDENT HANDBOOK: DOCUMENT INGESTION & CHUNKING (PHASE 1)")
+    print("  AASTU STUDENT HANDBOOK: CONTINUOUS DOCUMENT CHUNKING (FIX)")
     print("=" * 70)
 
     chunks = run_ingestion()
 
     total_words = sum(c["word_count"] for c in chunks)
     avg_words = total_words / len(chunks) if chunks else 0
+    multi_page_chunks = [c for c in chunks if c["page_start"] != c["page_end"]]
 
     print("-" * 70)
     print("  INGESTION SUMMARY")
     print("-" * 70)
-    print(f"  Total Chunks Created:   {len(chunks):,}")
-    print(f"  Total Words Indexed:    {total_words:,}")
-    print(f"  Average Chunk Size:     {avg_words:.1f} words")
-    print(f"  Page Range Covered:     Page {chunks[0]['page']} -> Page {chunks[-1]['page']}")
+    print(f"  Total Chunks Created:      {len(chunks):,}")
+    print(f"  Total Words Indexed:       {total_words:,}")
+    print(f"  Average Chunk Size:        {avg_words:.1f} words")
+    print(f"  Page Range Covered:        Page {chunks[0]['page_start']} -> Page {chunks[-1]['page_end']}")
+    print(f"  Cross-Page Spanning Chunks:{len(multi_page_chunks):,} ({len(multi_page_chunks)/len(chunks)*100:.1f}%)")
     print("-" * 70)
-    print("  SAMPLE CHUNK PREVIEW")
+    print("  SAMPLE CROSS-PAGE CHUNK PREVIEW")
     print("-" * 70)
-    sample = chunks[5]
-    print(f"  Chunk ID:   {sample['chunk_id']}")
-    print(f"  Page:       {sample['page']}")
-    print(f"  Word Count: {sample['word_count']}")
-    print(f"  Preview:    {sample['text'][:280]}...")
+    # Pick a sample that spans two pages to demonstrate the fix!
+    sample = multi_page_chunks[0] if multi_page_chunks else chunks[0]
+    print(f"  Chunk ID:       {sample['chunk_id']}")
+    print(f"  Citation Label: {sample['citation_label']} (Spans: {sample['pages']})")
+    print(f"  Word Count:     {sample['word_count']}")
+    print(f"  Preview:        {sample['text'][:280]}...")
     print("=" * 70)
