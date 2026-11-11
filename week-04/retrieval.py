@@ -65,7 +65,7 @@ def index_chunks(
         print(f"[*] Vector store already indexed with all {current_count} chunks. Ready for retrieval.")
         return current_count
 
-    if force_reindex and current_count > 0:
+    if force_reindex:
         print("[*] Force reindex requested: Clearing existing collection...")
         # Delete and recreate to ensure clean state
         client = get_chroma_client()
@@ -198,3 +198,4 @@ if __name__ == "__main__":
     print("\n" + "=" * 75)
     print("  PHASE 2 READY: Vector store indexed and validated.")
     print("=" * 75)
+
