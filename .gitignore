@@ -2,6 +2,7 @@
 .venv/
 env/
 venv/
+.venv312
 
 # Bytecode and Cache
 __pycache__/
@@ -22,3 +23,7 @@ chroma_db/
 # Datasets (Excluded per assignment instructions)
 week-03/data/
 *.tsv
+
+# Environment variables & Secrets (Responsible AI)
+.env
+*.env
