@@ -1,0 +1,8 @@
+# Week 4: Generative AI & AI Applications
+# AASTU Student Handbook Grounded RAG Assistant
+
+google-genai>=0.1.0
+pypdf>=4.0.0
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+chromadb>=0.4.0
